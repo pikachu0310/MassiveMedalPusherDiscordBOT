@@ -40,6 +40,34 @@ FEEDBACK_CATEGORIES = {
     'その他': 'その他'
 }
 
+# 説明メッセージの内容
+FEEDBACK_DESCRIPTION = (
+    "このチャンネルで意見や質問を投稿できます。\n\n"
+    "**カテゴリ一覧：**\n"
+    "🎮 ゲームプレイ\n"
+    "🐛 バグ報告\n"
+    "💡 新機能提案\n"
+    "❓ 質問\n"
+    "📝 その他\n\n"
+    "メッセージ内にカテゴリの絵文字や文字列が含まれていると、\n"
+    "自動的にそのカテゴリとして認識され、スレッドが作成されます。\n"
+    "例：`🎮 ゲームの操作方法について` または `ゲーム 操作方法について`"
+)
+
+async def find_or_create_feedback_message(channel):
+    """説明メッセージを探すか、なければ作成する"""
+    async for message in channel.history(limit=100):
+        if message.author == bot.user and message.embeds and message.embeds[0].title == "ご意見箱":
+            return message
+    
+    # メッセージが見つからない場合は新規作成
+    embed = discord.Embed(
+        title="ご意見箱",
+        description=FEEDBACK_DESCRIPTION,
+        color=discord.Color.green()
+    )
+    return await channel.send(embed=embed)
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} としてログインしました！')
@@ -47,43 +75,37 @@ async def on_ready():
     # ロール選択メッセージの投稿
     role_channel = bot.get_channel(ROLE_CHANNEL_ID)
     if role_channel:
-        embed = discord.Embed(
-            title="ロール選択",
-            description="下のリアクションをクリックして、あなたのロールを選択してください！",
-            color=discord.Color.blue()
-        )
-        
-        for emoji, role_id in ROLE_REACTIONS.items():
-            role = role_channel.guild.get_role(role_id)
-            if role:
-                embed.add_field(name=role.name, value=f"{emoji} をクリック", inline=False)
-        
-        message = await role_channel.send(embed=embed)
-        
-        # リアクションを追加
-        for emoji in ROLE_REACTIONS.keys():
-            await message.add_reaction(emoji)
+        # 既存のメッセージを探す
+        async for message in role_channel.history(limit=100):
+            if message.author == bot.user and message.embeds and message.embeds[0].title == "ロール選択":
+                # 既存のメッセージが見つかった場合、リアクションを確認
+                for emoji in ROLE_REACTIONS.keys():
+                    if not any(reaction.emoji == emoji for reaction in message.reactions):
+                        await message.add_reaction(emoji)
+                break
+        else:
+            # メッセージが見つからない場合は新規作成
+            embed = discord.Embed(
+                title="ロール選択",
+                description="下のリアクションをクリックして、あなたのロールを選択してください！",
+                color=discord.Color.blue()
+            )
+            
+            for emoji, role_id in ROLE_REACTIONS.items():
+                role = role_channel.guild.get_role(role_id)
+                if role:
+                    embed.add_field(name=role.name, value=f"{emoji} をクリック", inline=False)
+            
+            message = await role_channel.send(embed=embed)
+            
+            # リアクションを追加
+            for emoji in ROLE_REACTIONS.keys():
+                await message.add_reaction(emoji)
     
-    # ご意見箱の説明メッセージを投稿
+    # ご意見箱の説明メッセージを投稿または再利用
     feedback_channel = bot.get_channel(FEEDBACK_CHANNEL_ID)
     if feedback_channel:
-        embed = discord.Embed(
-            title="ご意見箱",
-            description=(
-                "このチャンネルで意見や質問を投稿できます。\n\n"
-                "**カテゴリ一覧：**\n"
-                "🎮 ゲームプレイ\n"
-                "🐛 バグ報告\n"
-                "💡 新機能提案\n"
-                "❓ 質問\n"
-                "📝 その他\n\n"
-                "メッセージ内にカテゴリの絵文字や文字列が含まれていると、\n"
-                "自動的にそのカテゴリとして認識されます。\n"
-                "例：`🎮 ゲームの操作方法について` または `ゲーム 操作方法について`"
-            ),
-            color=discord.Color.green()
-        )
-        await feedback_channel.send(embed=embed)
+        await find_or_create_feedback_message(feedback_channel)
 
 @bot.event
 async def on_message(message):
@@ -103,6 +125,10 @@ async def on_message(message):
                 break
         
         if detected_category:
+            # スレッドを作成
+            thread_name = f"{detected_category} - {datetime.now().strftime('%Y/%m/%d')}"
+            thread = await message.create_thread(name=thread_name)
+            
             # 運営への通知
             notification_channel = bot.get_channel(NOTIFICATION_CHANNEL_ID)
             if notification_channel:
@@ -113,12 +139,12 @@ async def on_message(message):
                 )
                 embed.add_field(name="カテゴリ", value=detected_category, inline=True)
                 embed.add_field(name="投稿者", value=message.author.mention, inline=True)
-                embed.add_field(name="メッセージ", value=f"[リンク]({message.jump_url})", inline=True)
+                embed.add_field(name="スレッド", value=f"[リンク]({thread.jump_url})", inline=True)
                 await notification_channel.send(embed=embed)
             
             # メッセージにカテゴリの確認を追加
             await message.add_reaction('✅')
-            await message.reply(f"✅ {detected_category}として受け付けました", mention_author=False)
+            await message.reply(f"✅ {detected_category}として受け付けました\nスレッドを作成しました：{thread.mention}", mention_author=False)
     
     await bot.process_commands(message)
 
