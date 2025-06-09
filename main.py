@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 import asyncio
 
-# .envファイルから環境変数を読み込む
+# 環境変数の読み込み
 load_dotenv()
 
 # Botの設定
@@ -16,54 +16,57 @@ intents.members = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# チャンネルIDとロールIDの設定
-ROLE_CHANNEL_ID = 1381707666249875496
-FEEDBACK_CHANNEL_ID = 1381642719557845063
-NOTIFICATION_CHANNEL_ID = 1381707666249875496
+# 定数定義
+class Config:
+    # チャンネルID
+    ROLE_CHANNEL_ID = 1381707666249875496
+    FEEDBACK_CHANNEL_ID = 1381642719557845063
+    NOTIFICATION_CHANNEL_ID = 1381707666249875496
 
-ROLE_REACTIONS = {
-    '🎮': 1381708151891562690,  # 1つ目のロールID
-    '🎨': 1381708218639581355,  # 2つ目のロールID
-}
+    # ロール設定
+    ROLE_REACTIONS = {
+        '🎮': 1381708151891562690,  # 1つ目のロールID
+        '🎨': 1381708218639581355,  # 2つ目のロールID
+    }
 
-# 意見のカテゴリ
-FEEDBACK_CATEGORIES = {
-    '🎮': 'ゲームプレイ',
-    '🐛': 'バグ報告',
-    '💡': '新機能提案',
-    '❓': '質問',
-    '📝': 'その他',
-    # テキストベースのカテゴリも追加
-    'ゲーム': 'ゲームプレイ',
-    'バグ': 'バグ報告',
-    '提案': '新機能提案',
-    '質問': '質問',
-    'その他': 'その他'
-}
+    # 意見のカテゴリ
+    FEEDBACK_CATEGORIES = {
+        '🎮': 'ゲームプレイ',
+        '🐛': 'バグ報告',
+        '💡': '新機能提案',
+        '❓': '質問',
+        '📝': 'その他',
+        # テキストベースのカテゴリ
+        'ゲーム': 'ゲームプレイ',
+        'バグ': 'バグ報告',
+        '提案': '新機能提案',
+        '質問': '質問',
+        'その他': 'その他'
+    }
 
-# 解決状態のスタンプ
-RESOLUTION_REACTIONS = {
-    '⏳': '未解決',
-    '✅': '解決済み'
-}
+    # 解決状態のスタンプ
+    RESOLUTION_REACTIONS = {
+        '⏳': '未解決',
+        '✅': '解決済み'
+    }
 
-# 説明メッセージの内容
-FEEDBACK_DESCRIPTION = (
-    "このチャンネルで意見や質問を投稿できます。\n\n"
-    "**カテゴリ一覧：**\n"
-    "🎮 ゲームプレイ\n"
-    "🐛 バグ報告\n"
-    "💡 新機能提案\n"
-    "❓ 質問\n"
-    "📝 その他\n\n"
-    "メッセージ内にカテゴリの絵文字や文字列が含まれていると、\n"
-    "自動的にそのカテゴリとして認識され、スレッドが作成されます。\n"
-    "例：`🎮 ゲームの操作方法について` または `ゲーム 操作方法について`\n\n"
-    "**解決状態の管理：**\n"
-    "⏳ 未解決\n"
-    "✅ 解決済み\n"
-    "これらのスタンプをクリックすることで、解決状態を切り替えることができます。"
-)
+    # 説明メッセージ
+    FEEDBACK_DESCRIPTION = (
+        "このチャンネルで意見や質問を投稿できます。\n\n"
+        "**カテゴリ一覧：**\n"
+        "🎮 ゲームプレイ\n"
+        "🐛 バグ報告\n"
+        "💡 新機能提案\n"
+        "❓ 質問\n"
+        "📝 その他\n\n"
+        "メッセージ内にカテゴリの絵文字や文字列が含まれていると、\n"
+        "自動的にそのカテゴリとして認識され、スレッドが作成されます。\n"
+        "例：`🎮 ゲームの操作方法について` または `ゲーム 操作方法について`\n\n"
+        "**解決状態の管理：**\n"
+        "⏳ 未解決\n"
+        "✅ 解決済み\n"
+        "これらのスタンプをクリックすることで、解決状態を切り替えることができます。"
+    )
 
 async def find_or_create_feedback_message(channel):
     """説明メッセージを探すか、なければ作成する"""
@@ -74,23 +77,24 @@ async def find_or_create_feedback_message(channel):
     # メッセージが見つからない場合は新規作成
     embed = discord.Embed(
         title="ご意見箱",
-        description=FEEDBACK_DESCRIPTION,
+        description=Config.FEEDBACK_DESCRIPTION,
         color=discord.Color.green()
     )
     return await channel.send(embed=embed)
 
 @bot.event
 async def on_ready():
+    """Bot起動時の処理"""
     print(f'{bot.user} としてログインしました！')
     
     # ロール選択メッセージの投稿
-    role_channel = bot.get_channel(ROLE_CHANNEL_ID)
+    role_channel = bot.get_channel(Config.ROLE_CHANNEL_ID)
     if role_channel:
         # 既存のメッセージを探す
         async for message in role_channel.history(limit=100):
             if message.author == bot.user and message.embeds and message.embeds[0].title == "ロール選択":
                 # 既存のメッセージが見つかった場合、リアクションを確認
-                for emoji in ROLE_REACTIONS.keys():
+                for emoji in Config.ROLE_REACTIONS.keys():
                     if not any(reaction.emoji == emoji for reaction in message.reactions):
                         await message.add_reaction(emoji)
                 break
@@ -102,7 +106,7 @@ async def on_ready():
                 color=discord.Color.blue()
             )
             
-            for emoji, role_id in ROLE_REACTIONS.items():
+            for emoji, role_id in Config.ROLE_REACTIONS.items():
                 role = role_channel.guild.get_role(role_id)
                 if role:
                     embed.add_field(name=role.name, value=f"{emoji} をクリック", inline=False)
@@ -110,27 +114,28 @@ async def on_ready():
             message = await role_channel.send(embed=embed)
             
             # リアクションを追加
-            for emoji in ROLE_REACTIONS.keys():
+            for emoji in Config.ROLE_REACTIONS.keys():
                 await message.add_reaction(emoji)
     
     # ご意見箱の説明メッセージを投稿または再利用
-    feedback_channel = bot.get_channel(FEEDBACK_CHANNEL_ID)
+    feedback_channel = bot.get_channel(Config.FEEDBACK_CHANNEL_ID)
     if feedback_channel:
         await find_or_create_feedback_message(feedback_channel)
 
 @bot.event
 async def on_message(message):
+    """メッセージ受信時の処理"""
     # Botのメッセージは無視
     if message.author.bot:
         return
     
     # ご意見箱チャンネルのメッセージを処理
-    if message.channel.id == FEEDBACK_CHANNEL_ID:
+    if message.channel.id == Config.FEEDBACK_CHANNEL_ID:
         content = message.content.strip()
         
         # カテゴリの検出
         detected_category = None
-        for emoji, category in FEEDBACK_CATEGORIES.items():
+        for emoji, category in Config.FEEDBACK_CATEGORIES.items():
             if emoji in content or category in content:
                 detected_category = category
                 break
@@ -141,7 +146,7 @@ async def on_message(message):
             thread = await message.create_thread(name=thread_name)
             
             # 運営への通知
-            notification_channel = bot.get_channel(NOTIFICATION_CHANNEL_ID)
+            notification_channel = bot.get_channel(Config.NOTIFICATION_CHANNEL_ID)
             if notification_channel:
                 embed = discord.Embed(
                     title="新しい意見が投稿されました",
@@ -163,7 +168,7 @@ async def on_message(message):
 
 @bot.event
 async def on_raw_reaction_add(payload):
-    """リアクションが追加されたときの処理"""
+    """リアクション追加時の処理"""
     # Botのリアクションは無視
     if payload.user_id == bot.user.id:
         return
@@ -174,8 +179,8 @@ async def on_raw_reaction_add(payload):
     # ロール選択のリアクション処理
     if message.author == bot.user and message.embeds and message.embeds[0].title == "ロール選択":
         emoji = str(payload.emoji)
-        if emoji in ROLE_REACTIONS:
-            role_id = ROLE_REACTIONS[emoji]
+        if emoji in Config.ROLE_REACTIONS:
+            role_id = Config.ROLE_REACTIONS[emoji]
             guild = bot.get_guild(payload.guild_id)
             member = guild.get_member(payload.user_id)
             
@@ -189,9 +194,9 @@ async def on_raw_reaction_add(payload):
                 await temp_message.delete()  # メッセージを削除
     
     # 解決状態のリアクション処理
-    elif message.channel.id == FEEDBACK_CHANNEL_ID:
+    elif message.channel.id == Config.FEEDBACK_CHANNEL_ID:
         emoji = str(payload.emoji)
-        if emoji in RESOLUTION_REACTIONS:
+        if emoji in Config.RESOLUTION_REACTIONS:
             # 現在の解決状態を確認
             current_state = '⏳' if any(r.emoji == '⏳' for r in message.reactions) else '✅'
             new_state = '✅' if current_state == '⏳' else '⏳'
@@ -206,7 +211,7 @@ async def on_raw_reaction_add(payload):
 
 @bot.event
 async def on_raw_reaction_remove(payload):
-    """リアクションが削除されたときの処理"""
+    """リアクション削除時の処理"""
     # Botのリアクションは無視
     if payload.user_id == bot.user.id:
         return
@@ -217,8 +222,8 @@ async def on_raw_reaction_remove(payload):
     # ロール選択のリアクション処理
     if message.author == bot.user and message.embeds and message.embeds[0].title == "ロール選択":
         emoji = str(payload.emoji)
-        if emoji in ROLE_REACTIONS:
-            role_id = ROLE_REACTIONS[emoji]
+        if emoji in Config.ROLE_REACTIONS:
+            role_id = Config.ROLE_REACTIONS[emoji]
             guild = bot.get_guild(payload.guild_id)
             member = guild.get_member(payload.user_id)
             
@@ -231,5 +236,9 @@ async def on_raw_reaction_remove(payload):
                 await asyncio.sleep(10)  # 10秒待機
                 await temp_message.delete()  # メッセージを削除
 
-# Botを起動
-bot.run(os.getenv('DISCORD_TOKEN')) 
+def main():
+    """メイン関数"""
+    bot.run(os.getenv('DISCORD_TOKEN'))
+
+if __name__ == "__main__":
+    main() 
