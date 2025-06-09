@@ -31,7 +31,13 @@ FEEDBACK_CATEGORIES = {
     '🐛': 'バグ報告',
     '💡': '新機能提案',
     '❓': '質問',
-    '📝': 'その他'
+    '📝': 'その他',
+    # テキストベースのカテゴリも追加
+    'ゲーム': 'ゲームプレイ',
+    'バグ': 'バグ報告',
+    '提案': '新機能提案',
+    '質問': '質問',
+    'その他': 'その他'
 }
 
 @bot.event
@@ -65,17 +71,15 @@ async def on_ready():
             title="ご意見箱",
             description=(
                 "このチャンネルで意見や質問を投稿できます。\n\n"
-                "**投稿方法：**\n"
-                "1. このメッセージに返信する形で投稿してください\n"
-                "2. 投稿の最初にカテゴリを指定してください（例：`🎮 ゲームの操作方法について`）\n\n"
                 "**カテゴリ一覧：**\n"
                 "🎮 ゲームプレイ\n"
                 "🐛 バグ報告\n"
                 "💡 新機能提案\n"
                 "❓ 質問\n"
                 "📝 その他\n\n"
-                "※ 匿名で投稿したい場合は、最初に `匿名:` と入力してください\n"
-                "例：`匿名: 🎮 ゲームの操作方法について`"
+                "メッセージ内にカテゴリの絵文字や文字列が含まれていると、\n"
+                "自動的にそのカテゴリとして認識されます。\n"
+                "例：`🎮 ゲームの操作方法について` または `ゲーム 操作方法について`"
             ),
             color=discord.Color.green()
         )
@@ -89,31 +93,16 @@ async def on_message(message):
     
     # ご意見箱チャンネルのメッセージを処理
     if message.channel.id == FEEDBACK_CHANNEL_ID:
-        # スレッドの返信でない場合のみ処理
-        if not message.reference:
-            # カテゴリの確認
-            content = message.content.strip()
-            is_anonymous = content.startswith('匿名:')
-            
-            if is_anonymous:
-                content = content[3:].strip()
-            
-            # カテゴリの検出
-            category_emoji = None
-            for emoji in FEEDBACK_CATEGORIES.keys():
-                if content.startswith(emoji):
-                    category_emoji = emoji
-                    content = content[len(emoji):].strip()
-                    break
-            
-            if not category_emoji:
-                await message.reply("投稿の最初にカテゴリを指定してください。\n例：`🎮 ゲームの操作方法について`")
-                return
-            
-            # スレッドを作成
-            thread_name = f"{FEEDBACK_CATEGORIES[category_emoji]} - {datetime.now().strftime('%Y/%m/%d')}"
-            thread = await message.create_thread(name=thread_name)
-            
+        content = message.content.strip()
+        
+        # カテゴリの検出
+        detected_category = None
+        for emoji, category in FEEDBACK_CATEGORIES.items():
+            if emoji in content or category in content:
+                detected_category = category
+                break
+        
+        if detected_category:
             # 運営への通知
             notification_channel = bot.get_channel(NOTIFICATION_CHANNEL_ID)
             if notification_channel:
@@ -122,16 +111,14 @@ async def on_message(message):
                     description=content,
                     color=discord.Color.blue()
                 )
-                embed.add_field(name="カテゴリ", value=FEEDBACK_CATEGORIES[category_emoji], inline=True)
-                embed.add_field(name="投稿者", value="匿名" if is_anonymous else message.author.mention, inline=True)
-                embed.add_field(name="スレッド", value=f"[リンク]({thread.jump_url})", inline=True)
+                embed.add_field(name="カテゴリ", value=detected_category, inline=True)
+                embed.add_field(name="投稿者", value=message.author.mention, inline=True)
+                embed.add_field(name="メッセージ", value=f"[リンク]({message.jump_url})", inline=True)
                 await notification_channel.send(embed=embed)
             
-            # 投稿を編集して整形
-            if is_anonymous:
-                await message.edit(content=f"**匿名投稿**\n{content}")
-            else:
-                await message.edit(content=content)
+            # メッセージにカテゴリの確認を追加
+            await message.add_reaction('✅')
+            await message.reply(f"✅ {detected_category}として受け付けました", mention_author=False)
     
     await bot.process_commands(message)
 
