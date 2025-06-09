@@ -157,7 +157,7 @@ async def on_message(message):
             await message.add_reaction('✅')
             
             # スレッド内に受け付けメッセージを投稿
-            await thread.send(f"✅ {detected_category}として受け付けました")
+            await thread.send(f"{detected_category}として受け付けました")
             
             # 解決状態のスタンプを追加（初期状態は未解決）
             await message.add_reaction('⏳')
