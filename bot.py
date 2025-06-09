@@ -144,7 +144,14 @@ async def on_message(message):
             
             # メッセージにカテゴリの確認を追加
             await message.add_reaction('✅')
-            await message.reply(f"✅ {detected_category}として受け付けました\nスレッドを作成しました：{thread.mention}", mention_author=False)
+            
+            # スレッド内に受け付けメッセージを投稿
+            embed = discord.Embed(
+                title="受け付け完了",
+                description=f"✅ {detected_category}として受け付けました",
+                color=discord.Color.green()
+            )
+            await thread.send(embed=embed)
     
     await bot.process_commands(message)
 
