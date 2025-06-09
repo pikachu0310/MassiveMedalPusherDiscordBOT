@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 from datetime import datetime
+import asyncio
 
 # .envファイルから環境変数を読み込む
 load_dotenv()
@@ -40,6 +41,12 @@ FEEDBACK_CATEGORIES = {
     'その他': 'その他'
 }
 
+# 解決状態のスタンプ
+RESOLUTION_REACTIONS = {
+    '⏳': '未解決',
+    '✅': '解決済み'
+}
+
 # 説明メッセージの内容
 FEEDBACK_DESCRIPTION = (
     "このチャンネルで意見や質問を投稿できます。\n\n"
@@ -51,7 +58,11 @@ FEEDBACK_DESCRIPTION = (
     "📝 その他\n\n"
     "メッセージ内にカテゴリの絵文字や文字列が含まれていると、\n"
     "自動的にそのカテゴリとして認識され、スレッドが作成されます。\n"
-    "例：`🎮 ゲームの操作方法について` または `ゲーム 操作方法について`"
+    "例：`🎮 ゲームの操作方法について` または `ゲーム 操作方法について`\n\n"
+    "**解決状態の管理：**\n"
+    "⏳ 未解決\n"
+    "✅ 解決済み\n"
+    "これらのスタンプをクリックすることで、解決状態を切り替えることができます。"
 )
 
 async def find_or_create_feedback_message(channel):
@@ -146,12 +157,10 @@ async def on_message(message):
             await message.add_reaction('✅')
             
             # スレッド内に受け付けメッセージを投稿
-            embed = discord.Embed(
-                title="受け付け完了",
-                description=f"✅ {detected_category}として受け付けました",
-                color=discord.Color.green()
-            )
-            await thread.send(embed=embed)
+            await thread.send(f"✅ {detected_category}として受け付けました")
+            
+            # 解決状態のスタンプを追加
+            await message.add_reaction('⏳')  # 初期状態は未解決
     
     await bot.process_commands(message)
 
@@ -162,26 +171,38 @@ async def on_raw_reaction_add(payload):
     if payload.user_id == bot.user.id:
         return
     
-    # メッセージがBotのメッセージでない場合は無視
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
-    if message.author != bot.user:
-        return
     
-    # リアクションに対応するロールを取得
-    emoji = str(payload.emoji)
-    if emoji not in ROLE_REACTIONS:
-        return
+    # ロール選択のリアクション処理
+    if message.author == bot.user and message.embeds and message.embeds[0].title == "ロール選択":
+        emoji = str(payload.emoji)
+        if emoji in ROLE_REACTIONS:
+            role_id = ROLE_REACTIONS[emoji]
+            guild = bot.get_guild(payload.guild_id)
+            member = guild.get_member(payload.user_id)
+            
+            # ロールを取得して付与
+            role = guild.get_role(role_id)
+            if role:
+                await member.add_roles(role)
+                # 一時的な通知メッセージを送信
+                temp_message = await channel.send(f"{member.mention} に {role.name}ロールを付与しました！")
+                await asyncio.sleep(10)  # 10秒待機
+                await temp_message.delete()  # メッセージを削除
     
-    role_id = ROLE_REACTIONS[emoji]
-    guild = bot.get_guild(payload.guild_id)
-    member = guild.get_member(payload.user_id)
-    
-    # ロールを取得して付与
-    role = guild.get_role(role_id)
-    if role:
-        await member.add_roles(role)
-        await member.send(f"{role.name}ロールを付与しました！")
+    # 解決状態のリアクション処理
+    elif message.channel.id == FEEDBACK_CHANNEL_ID:
+        emoji = str(payload.emoji)
+        if emoji in RESOLUTION_REACTIONS:
+            # 現在の解決状態を確認
+            current_state = '⏳' if any(r.emoji == '⏳' for r in message.reactions) else '✅'
+            new_state = '✅' if current_state == '⏳' else '⏳'
+            
+            # 古いリアクションを削除
+            await message.remove_reaction(current_state, bot.user)
+            # 新しいリアクションを追加
+            await message.add_reaction(new_state)
 
 @bot.event
 async def on_raw_reaction_remove(payload):
@@ -190,26 +211,25 @@ async def on_raw_reaction_remove(payload):
     if payload.user_id == bot.user.id:
         return
     
-    # メッセージがBotのメッセージでない場合は無視
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
-    if message.author != bot.user:
-        return
     
-    # リアクションに対応するロールを取得
-    emoji = str(payload.emoji)
-    if emoji not in ROLE_REACTIONS:
-        return
-    
-    role_id = ROLE_REACTIONS[emoji]
-    guild = bot.get_guild(payload.guild_id)
-    member = guild.get_member(payload.user_id)
-    
-    # ロールを取得して削除
-    role = guild.get_role(role_id)
-    if role:
-        await member.remove_roles(role)
-        await member.send(f"{role.name}ロールを削除しました！")
+    # ロール選択のリアクション処理
+    if message.author == bot.user and message.embeds and message.embeds[0].title == "ロール選択":
+        emoji = str(payload.emoji)
+        if emoji in ROLE_REACTIONS:
+            role_id = ROLE_REACTIONS[emoji]
+            guild = bot.get_guild(payload.guild_id)
+            member = guild.get_member(payload.user_id)
+            
+            # ロールを取得して削除
+            role = guild.get_role(role_id)
+            if role:
+                await member.remove_roles(role)
+                # 一時的な通知メッセージを送信
+                temp_message = await channel.send(f"{member.mention} から {role.name}ロールを削除しました！")
+                await asyncio.sleep(10)  # 10秒待機
+                await temp_message.delete()  # メッセージを削除
 
 # Botを起動
 bot.run(os.getenv('DISCORD_TOKEN')) 
