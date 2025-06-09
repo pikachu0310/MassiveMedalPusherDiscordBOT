@@ -159,8 +159,8 @@ async def on_message(message):
             # スレッド内に受け付けメッセージを投稿
             await thread.send(f"✅ {detected_category}として受け付けました")
             
-            # 解決状態のスタンプを追加
-            await message.add_reaction('⏳')  # 初期状態は未解決
+            # 解決状態のスタンプを追加（初期状態は未解決）
+            await message.add_reaction('⏳')
     
     await bot.process_commands(message)
 
@@ -198,6 +198,9 @@ async def on_raw_reaction_add(payload):
             # 現在の解決状態を確認
             current_state = '⏳' if any(r.emoji == '⏳' for r in message.reactions) else '✅'
             new_state = '✅' if current_state == '⏳' else '⏳'
+            
+            # ユーザーのリアクションを削除
+            await message.remove_reaction(emoji, payload.member)
             
             # 古いリアクションを削除
             await message.remove_reaction(current_state, bot.user)
