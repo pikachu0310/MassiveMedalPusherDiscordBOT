@@ -153,11 +153,8 @@ async def on_message(message):
                 embed.add_field(name="スレッド", value=f"[リンク]({thread.jump_url})", inline=True)
                 await notification_channel.send(embed=embed)
             
-            # メッセージにカテゴリの確認を追加
-            await message.add_reaction('✅')
-            
             # スレッド内に受け付けメッセージを投稿
-            await thread.send(f"{detected_category}として受け付けました")
+            await thread.send(f"✅{detected_category}として受け付けました")
             
             # 解決状態のスタンプを追加（初期状態は未解決）
             await message.add_reaction('⏳')
@@ -187,7 +184,7 @@ async def on_raw_reaction_add(payload):
             if role:
                 await member.add_roles(role)
                 # 一時的な通知メッセージを送信
-                temp_message = await channel.send(f"{member.mention} に {role.name}ロールを付与しました！")
+                temp_message = await channel.send(f"✅{member.mention} に {role.name}ロールを付与しました！")
                 await asyncio.sleep(10)  # 10秒待機
                 await temp_message.delete()  # メッセージを削除
     
@@ -230,7 +227,7 @@ async def on_raw_reaction_remove(payload):
             if role:
                 await member.remove_roles(role)
                 # 一時的な通知メッセージを送信
-                temp_message = await channel.send(f"{member.mention} から {role.name}ロールを削除しました！")
+                temp_message = await channel.send(f"✅{member.mention} から {role.name}ロールを削除しました！")
                 await asyncio.sleep(10)  # 10秒待機
                 await temp_message.delete()  # メッセージを削除
 
