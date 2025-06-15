@@ -1,47 +1,47 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは、このリポジトリでコードを扱う際のClaude Code (claude.ai/code) へのガイダンスを提供します。
 
-## Running the Bot
+## ボットの実行
 
-To run the Discord bot:
+Discordボットを実行するには：
 ```bash
 python main.py
 ```
 
-The bot requires a `.env` file with `DISCORD_TOKEN` environment variable.
+ボットは `DISCORD_TOKEN` 環境変数を含む `.env` ファイルが必要です。
 
-## Dependencies
+## 依存関係
 
-Install dependencies with:
+依存関係をインストールするには：
 ```bash
 pip install -r requirements.txt
 ```
 
-## Architecture
+## アーキテクチャ
 
-This is a Discord bot with the following core functionality:
+これは以下の核となる機能を持つDiscordボットです：
 
-### Role Management System
-- Channel ID `1381707666249875496` handles role selection via reaction-based interface
-- Users react with emoji (🎮, 🎨) to get corresponding Discord roles
-- Bot automatically manages role assignment/removal based on reactions
+### ロール管理システム
+- チャンネルID `1381707666249875496` でリアクションベースのインターフェースを使用したロール選択を処理
+- ユーザーが絵文字（🎮、🎨）でリアクションすると対応するDiscordロールを取得
+- ボットはリアクションに基づいてロールの割り当て/削除を自動管理
 
-### Feedback System  
-- Channel ID `1381642719557845063` serves as feedback collection channel
-- Auto-detects categories from message content using emojis or keywords:
+### フィードバックシステム
+- チャンネルID `1381642719557845063` がフィードバック収集チャンネルとして機能
+- 絵文字やキーワードを使用してメッセージ内容からカテゴリを自動検出：
   - 🎮/ゲーム: ゲームプレイ
   - 🐛/バグ: バグ報告  
   - 💡/提案: 新機能提案
   - ❓/質問: 質問
   - 📝/その他: その他
-- Creates threaded discussions for each feedback item
-- Tracks resolution status with ⏳ (未解決) and ✅ (解決済み) reactions
-- Sends notifications to management channel when new feedback is posted
+- 各フィードバック項目に対してスレッド化された議論を作成
+- ⏳（未解決）と✅（解決済み）のリアクションで解決状況を追跡
+- 新しいフィードバックが投稿された際に管理チャンネルに通知を送信
 
-### Configuration
-All hardcoded IDs, messages, and mappings are centralized in the `Config` class at the top of `main.py`. When modifying channel IDs, role IDs, or behavior, update the constants in this class.
+### 設定
+すべてのハードコードされたID、メッセージ、マッピングは `main.py` の先頭にある `Config` クラスに集約されています。チャンネルID、ロールID、動作を変更する際は、このクラスの定数を更新してください。
 
-### Key Functions
-- `find_or_create_feedback_message()`: Manages persistent feedback instruction messages
-- Event handlers for `on_message`, `on_raw_reaction_add/remove`: Core bot interaction logic
+### 主要な関数
+- `find_or_create_feedback_message()`: 永続的なフィードバック指示メッセージを管理
+- `on_message`、`on_raw_reaction_add/remove` のイベントハンドラ: ボットの核となるインタラクション処理ロジック
