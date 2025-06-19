@@ -19,15 +19,12 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # 定数定義
 class Config:
     # チャンネルID
-    ROLE_CHANNEL_ID = 1381707666249875496
+    ROLE_CHANNEL_ID = 1381647499596529755  # サーバールールチャンネル
     FEEDBACK_CHANNEL_ID = 1381642719557845063
     NOTIFICATION_CHANNEL_ID = 1381707666249875496
 
-    # ロール設定
-    ROLE_REACTIONS = {
-        '🎮': 1381708151891562690,  # 1つ目のロールID
-        '🎨': 1381708218639581355,  # 2つ目のロールID
-    }
+    # ロール設定（本番用）
+    GENERAL_ROLE_ID = 1381643598126387281  # 一般ロール（参加者用）
 
     # 意見のカテゴリ
     FEEDBACK_CATEGORIES = {
@@ -87,35 +84,32 @@ async def on_ready():
     """Bot起動時の処理"""
     print(f'{bot.user} としてログインしました！')
     
-    # ロール選択メッセージの投稿
+    # サーバー参加用メッセージの投稿
     role_channel = bot.get_channel(Config.ROLE_CHANNEL_ID)
     if role_channel:
         # 既存のメッセージを探す
         async for message in role_channel.history(limit=100):
-            if message.author == bot.user and message.embeds and message.embeds[0].title == "ロール選択":
+            if message.author == bot.user and message.embeds and message.embeds[0].title == "サーバー参加":
                 # 既存のメッセージが見つかった場合、リアクションを確認
-                for emoji in Config.ROLE_REACTIONS.keys():
-                    if not any(reaction.emoji == emoji for reaction in message.reactions):
-                        await message.add_reaction(emoji)
+                if not any(reaction.emoji == '✅' for reaction in message.reactions):
+                    await message.add_reaction('✅')
                 break
         else:
             # メッセージが見つからない場合は新規作成
             embed = discord.Embed(
-                title="ロール選択",
-                description="下のリアクションをクリックして、あなたのロールを選択してください！",
-                color=discord.Color.blue()
+                title="サーバー参加",
+                description="上記のルールを確認の上、下のリアクションを押してサーバーへご参加ください\n\nPlease check the above rules and press the reaction below to join the server!",
+                color=discord.Color.green()
             )
             
-            for emoji, role_id in Config.ROLE_REACTIONS.items():
-                role = role_channel.guild.get_role(role_id)
-                if role:
-                    embed.add_field(name=role.name, value=f"{emoji} をクリック", inline=False)
+            general_role = role_channel.guild.get_role(Config.GENERAL_ROLE_ID)
+            if general_role:
+                embed.add_field(name="参加後に付与されるロール / Role to be assigned", value=f"✅ {general_role.name}", inline=False)
             
             message = await role_channel.send(embed=embed)
             
             # リアクションを追加
-            for emoji in Config.ROLE_REACTIONS.keys():
-                await message.add_reaction(emoji)
+            await message.add_reaction('✅')
     
     # ご意見箱の説明メッセージを投稿または再利用
     feedback_channel = bot.get_channel(Config.FEEDBACK_CHANNEL_ID)
@@ -176,21 +170,20 @@ async def on_raw_reaction_add(payload):
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
     
-    # ロール選択のリアクション処理
-    if message.author == bot.user and message.embeds and message.embeds[0].title == "ロール選択":
+    # サーバー参加のリアクション処理
+    if message.author == bot.user and message.embeds and message.embeds[0].title == "サーバー参加":
         emoji = str(payload.emoji)
-        if emoji in Config.ROLE_REACTIONS:
-            role_id = Config.ROLE_REACTIONS[emoji]
+        if emoji == '✅':
             guild = bot.get_guild(payload.guild_id)
             member = guild.get_member(payload.user_id)
             
-            # ロールを取得して付与
-            role = guild.get_role(role_id)
-            if role:
+            # 一般ロールを取得して付与
+            role = guild.get_role(Config.GENERAL_ROLE_ID)
+            if role and role not in member.roles:
                 await member.add_roles(role)
                 # 一時的な通知メッセージを送信
-                temp_message = await channel.send(f"✅{member.mention} に {role.name}ロールを付与しました！")
-                await asyncio.sleep(10)  # 10秒待機
+                temp_message = await channel.send(f"✅{member.mention} さん、サーバーへようこそ！{role.name}ロールを付与しました！\nWelcome to the server! {role.name} role has been assigned!")
+                await asyncio.sleep(15)  # 15秒待機
                 await temp_message.delete()  # メッセージを削除
     
     # 解決状態のリアクション処理
@@ -219,22 +212,12 @@ async def on_raw_reaction_remove(payload):
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
     
-    # ロール選択のリアクション処理
-    if message.author == bot.user and message.embeds and message.embeds[0].title == "ロール選択":
+    # サーバー参加のリアクション削除処理（ロール削除はしない）
+    if message.author == bot.user and message.embeds and message.embeds[0].title == "サーバー参加":
         emoji = str(payload.emoji)
-        if emoji in Config.ROLE_REACTIONS:
-            role_id = Config.ROLE_REACTIONS[emoji]
-            guild = bot.get_guild(payload.guild_id)
-            member = guild.get_member(payload.user_id)
-            
-            # ロールを取得して削除
-            role = guild.get_role(role_id)
-            if role:
-                await member.remove_roles(role)
-                # 一時的な通知メッセージを送信
-                temp_message = await channel.send(f"✅{member.mention} から {role.name}ロールを削除しました！")
-                await asyncio.sleep(10)  # 10秒待機
-                await temp_message.delete()  # メッセージを削除
+        if emoji == '✅':
+            # リアクション削除時は特に何もしない（一度参加したらロールは維持）
+            pass
 
 def main():
     """メイン関数"""
