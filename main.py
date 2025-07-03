@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # 定数定義
 class Config:
     # チャンネルID
-    ROLE_CHANNEL_ID = 1381647499596529755  # サーバールールチャンネル
+    ROLE_CHANNEL_ID = 1381638244005052466  # サーバールールチャンネル
     FEEDBACK_CHANNEL_ID = 1381642719557845063
     NOTIFICATION_CHANNEL_ID = 1381707666249875496
 
