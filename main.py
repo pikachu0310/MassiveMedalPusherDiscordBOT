@@ -49,20 +49,21 @@ class Config:
 
     # 説明メッセージ
     FEEDBACK_DESCRIPTION = (
-        "このチャンネルで意見や質問を投稿できます。\n\n"
+        "このチャンネルで気軽に意見や質問を投稿しよう！\n\n"
+        "## 使い方\n"
+        "メッセージ内にカテゴリの絵文字や文字列が含まれていると、\n"
+        "自動的にそのカテゴリとして認識され、スレッドが作成されるので、\n"
+        "そのスレッド内に内容を書いてください。スレッド内で返信いたします。\n"
+        "例1: `質問 シャルベを救った回数って何ですか？`\n"
+        "例2: `💡 シャルベボールの残り数を表示すると良さそう！`\n\n"
         "**カテゴリ一覧：**\n"
         "🎮 ゲームプレイ\n"
         "🐛 バグ報告\n"
         "💡 新機能提案\n"
         "❓ 質問\n"
         "📝 その他\n\n"
-        "メッセージ内にカテゴリの絵文字や文字列が含まれていると、\n"
-        "自動的にそのカテゴリとして認識され、スレッドが作成されます。\n"
-        "例：`🎮 ゲームの操作方法について` または `ゲーム 操作方法について`\n\n"
-        "**解決状態の管理：**\n"
-        "⏳ 未解決\n"
-        "✅ 解決済み\n"
-        "これらのスタンプをクリックすることで、解決状態を切り替えることができます。"
+        "また、スタンプをクリックすることで、解決状態を切り替えることができます。(⏳ 未解決 / ✅ 解決済み)\n"
+        "(このメッセージは常に一番下に表示されます)"
     )
 
 async def find_or_create_feedback_message(channel):
@@ -78,6 +79,22 @@ async def find_or_create_feedback_message(channel):
         color=discord.Color.green()
     )
     return await channel.send(embed=embed)
+
+async def recreate_feedback_message(channel):
+    """既存のフィードバックメッセージを削除して新しいものを作成する"""
+    # 既存のフィードバックメッセージを探して削除
+    async for message in channel.history(limit=100):
+        if message.author == bot.user and message.embeds and message.embeds[0].title == "ご意見箱":
+            await message.delete()
+            break
+    
+    # 新しいフィードバックメッセージを作成
+    embed = discord.Embed(
+        title="ご意見箱",
+        description=Config.FEEDBACK_DESCRIPTION,
+        color=discord.Color.green()
+    )
+    await channel.send(embed=embed)
 
 @bot.event
 async def on_ready():
@@ -157,6 +174,9 @@ async def on_message(message):
             
             # 解決状態のスタンプを追加（初期状態は未解決）
             await message.add_reaction('⏳')
+            
+            # フィードバックメッセージを再作成（一番下に表示されるように）
+            await recreate_feedback_message(message.channel)
     
     await bot.process_commands(message)
 
